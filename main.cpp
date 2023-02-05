@@ -127,6 +127,9 @@ void compute_skmers (string filename, string outdir, size_t k, size_t m) {
 	// Number of nucleotides to read before the first kmer
 	size_t position = 0;
 	uint64_t minimizer = 1ul << (2 * m);
+	size_t minimizer_pos = 0;
+	const size_t nb_mmers_in_kmer = k - m + 1;
+	uint64_t * candidates = new uint64_t[nb_mmers_in_kmer];
 
 	while (fasta.has_next())
 	{
@@ -140,16 +143,37 @@ void compute_skmers (string filename, string outdir, size_t k, size_t m) {
 		// New char in current sequence
 		else
 		{
-			uint64_t val = stream.next_kmer(c);
+			uint64_t candidate = stream.next_kmer(c);
+			candidates[position % nb_mmers_in_kmer] = candidate;
 			if (position + 1 >= m)
 			{
-				// Current valid mmer
-				cout << val << '\t' << uint2kmer(val, m) << endl;
+				// New minimizer
+				if (candidate < minimizer)
+				{
+					minimizer = candidate;
+					minimizer_pos = position;
+					cout << "new\t" << candidate << '\t' << uint2kmer(candidate, m) << endl;
+				}
+				// Outdated minimizer
+				else if (position - minimizer_pos > k - m) {
+					minimizer = 1ul << (2 * m);
+					for (size_t candidate_pos=position-k+m ; candidate_pos<=position ; candidate_pos++)
+					{
+						if (minimizer > candidates[candidate_pos % nb_mmers_in_kmer])
+						{
+							minimizer = candidates[candidate_pos % nb_mmers_in_kmer];
+							minimizer_pos = candidate_pos;
+						}
+					}
+					cout << "outdated\t" << minimizer << '\t' << uint2kmer(minimizer, m) << endl;
+				}
 			}
 
 			position += 1;
 		}
 	}
+
+	delete[] candidates;
 }
 
 
