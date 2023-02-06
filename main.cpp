@@ -126,10 +126,14 @@ void compute_skmers (string filename, string outdir, size_t k, size_t m) {
 	KmerStream stream(m);
 	// Number of nucleotides to read before the first kmer
 	size_t position = 0;
+	const size_t nb_mmers_in_kmer = k - m + 1;
+	const size_t max_skmer_size = 2 * k - m;
+
 	uint64_t minimizer = 1ul << (2 * m);
 	size_t minimizer_pos = 0;
-	const size_t nb_mmers_in_kmer = k - m + 1;
 	uint64_t * candidates = new uint64_t[nb_mmers_in_kmer];
+	char * skmer_buffer = new char[max_skmer_size];
+	size_t skmer_start = 0;
 
 	while (fasta.has_next())
 	{
@@ -139,12 +143,15 @@ void compute_skmers (string filename, string outdir, size_t k, size_t m) {
 		{
 			position = 0;
 			minimizer = 1ul << (2 * m);
+			skmer_start = 0;
 		}
 		// New char in current sequence
 		else
 		{
 			uint64_t candidate = stream.next_kmer(c);
 			candidates[position % nb_mmers_in_kmer] = candidate;
+			skmer_buffer[position % max_skmer_size] = c;
+
 			if (position + 1 >= m)
 			{
 				// New minimizer
@@ -156,7 +163,14 @@ void compute_skmers (string filename, string outdir, size_t k, size_t m) {
 				}
 				// Outdated minimizer
 				else if (position - minimizer_pos > k - m) {
+					// Output the previous skmer
+					// TODO
+
+					// Reinit the minimizer
 					minimizer = 1ul << (2 * m);
+					skmer_start = position - k + m;
+
+					// Search in near past mmers for the new minimizer
 					for (size_t candidate_pos=position-k+m ; candidate_pos<=position ; candidate_pos++)
 					{
 						if (minimizer > candidates[candidate_pos % nb_mmers_in_kmer])
