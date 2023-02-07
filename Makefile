@@ -1,3 +1,3 @@
 
 all:
-	g++ main.cpp -o bucketting
+	g++ main.cpp -g -o bucketting
